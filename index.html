@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Registro del bebe</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <svg aria-hidden="true" class="icon-sprite">
+      <symbol id="icon-bottle" viewBox="0 0 24 24">
+        <path d="M9 2h6v3l-1 1v3.2l3 3V20a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-7.8l3-3V6L9 5V2Z" />
+        <path d="M10 2h4M9 15h6M9 18h6" />
+      </symbol>
+      <symbol id="icon-breast" viewBox="0 0 24 24">
+        <path d="M12 3c3.2 2.3 5 5.1 5 8.5 0 4-2.2 7.5-5 9.5-2.8-2-5-5.5-5-9.5C7 8.1 8.8 5.3 12 3Z" />
+        <path d="M12 12.2a2.2 2.2 0 1 0 0 .1" />
+      </symbol>
+      <symbol id="icon-diaper" viewBox="0 0 24 24">
+        <path d="M4 7c2.4 1.3 5 2 8 2s5.6-.7 8-2v7.8c0 3-2.4 5.2-5.2 5.2H9.2C6.4 20 4 17.8 4 14.8V7Z" />
+        <path d="M8 9v4M16 9v4M9 16h6" />
+      </symbol>
+      <symbol id="icon-sleep" viewBox="0 0 24 24">
+        <path d="M18.5 15.5A7.2 7.2 0 0 1 8.2 5.2 7.9 7.9 0 1 0 18.5 15.5Z" />
+        <path d="M16 4h4l-4 4h4M13 8h3l-3 3h3" />
+      </symbol>
+      <symbol id="icon-spit" viewBox="0 0 24 24">
+        <path d="M7 4c0 3 2 4 5 4s5-1 5-4" />
+        <path d="M8 13c.7-1 1.8-1.5 3.2-1.5 2.1 0 2.8 1.4 4.6 1.4 1 0 1.8-.3 2.2-.9" />
+        <path d="M10 18h.01M14 20h.01M18 17h.01" />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="M8 5v14l11-7-11-7Z" />
+      </symbol>
+      <symbol id="icon-stop" viewBox="0 0 24 24">
+        <path d="M7 7h10v10H7z" />
+      </symbol>
+      <symbol id="icon-clock" viewBox="0 0 24 24">
+        <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
+        <path d="M12 7v5l3 2" />
+      </symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24">
+        <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+        <path d="m14 8 2 2" />
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3" />
+      </symbol>
+      <symbol id="icon-baby" viewBox="0 0 24 24">
+        <path d="M12 21a8 8 0 0 0 8-8 8 8 0 0 0-16 0 8 8 0 0 0 8 8Z" />
+        <path d="M9 11h.01M15 11h.01M10 15c1.2.9 2.8.9 4 0M12 3c-.3 1.2.1 2.2 1.4 3" />
+      </symbol>
+    </svg>
+
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark"><svg><use href="#icon-baby"></use></svg></span>
+          <div>
+            <h1>Registro del bebe</h1>
+            <p id="todaySummary">Cargando...</p>
+          </div>
+        </div>
+        <button class="ghost-button" id="exportButton" type="button">Exportar</button>
+      </header>
+
+      <section class="time-panel" aria-labelledby="timeHeading">
+        <div>
+          <h2 id="timeHeading">Hora del registro</h2>
+          <p id="timeMode">Por defecto se guarda con la hora actual.</p>
+        </div>
+        <div class="time-controls">
+          <button class="chip active" id="nowButton" type="button">Ahora</button>
+          <button class="chip" data-offset="-5" type="button">-5 min</button>
+          <button class="chip" data-offset="-15" type="button">-15 min</button>
+          <button class="chip" data-offset="-30" type="button">-30 min</button>
+          <label class="time-input">
+            <svg><use href="#icon-clock"></use></svg>
+            <input id="eventTime" type="datetime-local" />
+          </label>
+        </div>
+      </section>
+
+      <section class="event-grid" aria-label="Eventos rapidos" id="eventGrid"></section>
+
+      <section class="timeline-section" aria-labelledby="timelineHeading">
+        <div class="section-head">
+          <div>
+            <h2 id="timelineHeading">Linea de tiempo</h2>
+            <p id="countLabel">Sin registros todavia.</p>
+          </div>
+          <div class="segmented" role="group" aria-label="Filtro de registros">
+            <button class="active" data-filter="today" type="button">Hoy</button>
+            <button data-filter="all" type="button">Todo</button>
+          </div>
+        </div>
+        <div class="timeline" id="timeline"></div>
+      </section>
+    </main>
+
+    <dialog id="entryDialog" class="entry-dialog">
+      <form method="dialog" id="entryForm">
+        <div class="dialog-head">
+          <div>
+            <h2 id="dialogTitle">Editar registro</h2>
+            <p id="dialogSubtitle"></p>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Cerrar" type="submit">×</button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            Evento
+            <select id="detailType"></select>
+          </label>
+          <label>
+            Hora principal
+            <input id="detailTime" type="datetime-local" required />
+          </label>
+          <label class="optional-time">
+            Inicio opcional
+            <input id="detailStart" type="datetime-local" />
+          </label>
+          <label class="optional-time">
+            Fin opcional
+            <input id="detailEnd" type="datetime-local" />
+          </label>
+          <label class="detail-field" data-for="bottle">
+            Cantidad
+            <input id="detailAmount" inputmode="decimal" placeholder="Ej. 60 ml" />
+          </label>
+          <label class="detail-field" data-for="breast">
+            Lado
+            <select id="detailSide">
+              <option value="">Sin especificar</option>
+              <option value="Izquierdo">Izquierdo</option>
+              <option value="Derecho">Derecho</option>
+              <option value="Ambos">Ambos</option>
+            </select>
+          </label>
+          <fieldset class="detail-field check-row" data-for="diaper">
+            <legend>Contenido</legend>
+            <label><input id="detailPee" type="checkbox" /> Pis</label>
+            <label><input id="detailPoop" type="checkbox" /> Popo</label>
+          </fieldset>
+          <label class="full">
+            Notas
+            <textarea id="detailNotes" rows="3" placeholder="Color, cantidad, contexto o cualquier detalle"></textarea>
+          </label>
+        </div>
+
+        <menu class="dialog-actions">
+          <button class="ghost-button" id="deleteFromDialog" type="button">Eliminar</button>
+          <span></span>
+          <button class="secondary-button" value="cancel" type="submit">Cancelar</button>
+          <button class="primary-button" id="saveEntry" value="default" type="submit">Guardar</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="exportDialog" class="entry-dialog">
+      <form method="dialog">
+        <div class="dialog-head">
+          <div>
+            <h2>Exportar registros</h2>
+            <p>Contenido listo para guardar o compartir.</p>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Cerrar" type="submit">×</button>
+        </div>
+        <textarea id="exportText" class="export-box" readonly rows="12"></textarea>
+        <menu class="dialog-actions">
+          <span></span>
+          <button class="primary-button" value="default" type="submit">Cerrar</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
