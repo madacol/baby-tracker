@@ -1,0 +1,11 @@
+{
+  "subdomain": "baby-tracker",
+  "service": {
+    "name": "baby-tracker.service",
+    "command": [
+      "/home/mada/.nvm/versions/node/v24.2.0/bin/node",
+      "--no-warnings",
+      "server.js"
+    ]
+  }
+}
