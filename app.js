@@ -208,15 +208,6 @@ function wireTimeWheel() {
     if (!tick) return;
     selectWheelOffset(Number(tick.dataset.offset), tick, true);
   });
-
-  // Require a click before the wheel captures scroll — prevents accidental
-  // page-scroll hijacking when the pointer drifts over the wheel.
-  timeWheel.addEventListener("pointerdown", () => {
-    timeWheel.classList.add("scroll-active");
-  });
-  timeWheel.addEventListener("pointerleave", () => {
-    timeWheel.classList.remove("scroll-active");
-  });
 }
 
 function renderEvents() {

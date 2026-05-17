@@ -189,16 +189,12 @@ h2 {
   display: grid;
   align-content: start;
   gap: 5px;
-  overflow-y: hidden;
+  overflow-y: auto;
   padding: var(--wheel-inset, 54px) 0;
   scroll-snap-type: y mandatory;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
   mask-image: linear-gradient(to bottom, transparent, black 14%, black 86%, transparent);
-}
-
-.time-wheel.scroll-active {
-  overflow-y: auto;
 }
 
 .time-tick {
