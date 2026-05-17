@@ -49,6 +49,21 @@
       <symbol id="icon-trash" viewBox="0 0 24 24">
         <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3" />
       </symbol>
+      <symbol id="icon-bath" viewBox="0 0 24 24">
+        <path d="M3 11h18v2a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-2Z" />
+        <path d="M3 11V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" />
+        <path d="M7 19v2M17 19v2" />
+      </symbol>
+      <symbol id="icon-nails" viewBox="0 0 24 24">
+        <circle cx="6" cy="6" r="2.5" />
+        <circle cx="6" cy="18" r="2.5" />
+        <path d="M8.5 7 20 12 8.5 17" />
+      </symbol>
+      <symbol id="icon-event" viewBox="0 0 24 24">
+        <rect x="5" y="2" width="14" height="20" rx="2" />
+        <path d="M9 2v4h6V2" />
+        <path d="M8 11h8M8 15h6M8 19h3" />
+      </symbol>
       <symbol id="icon-baby" viewBox="0 0 24 24">
         <path d="M12 21a8 8 0 0 0 8-8 8 8 0 0 0-16 0 8 8 0 0 0 8 8Z" />
         <path d="M9 11h.01M15 11h.01M10 15c1.2.9 2.8.9 4 0M12 3c-.3 1.2.1 2.2 1.4 3" />
@@ -156,9 +171,29 @@
           </label>
           <fieldset class="detail-field check-row" data-for="diaper">
             <legend>Contenido</legend>
-            <label><input id="detailPee" type="checkbox" /> Pis</label>
-            <label><input id="detailPoop" type="checkbox" /> Popo</label>
+            <label><input id="detailPee" type="checkbox" /> Miaito</label>
+            <label><input id="detailPoop" type="checkbox" /> Pupú</label>
           </fieldset>
+          <div class="detail-field" data-for="diaper">
+            <span class="field-label">Cantidad</span>
+            <input type="hidden" id="detailDiaperQty" />
+            <div class="pill-group" data-target="#detailDiaperQty">
+              <button type="button" data-value="poco">Poco</button>
+              <button type="button" data-value="normal">Normal</button>
+              <button type="button" data-value="mucho">Mucho</button>
+            </div>
+          </div>
+          <div class="detail-field" data-for="diaper">
+            <span class="field-label">Color</span>
+            <input type="hidden" id="detailDiaperColor" />
+            <div class="pill-group" data-target="#detailDiaperColor">
+              <button type="button" data-value="amarillo" style="--pill-color:#f0c040">Amarillo</button>
+              <button type="button" data-value="verde"    style="--pill-color:#5aaa6a">Verde</button>
+              <button type="button" data-value="naranja"  style="--pill-color:#e87830">Naranja</button>
+              <button type="button" data-value="café"     style="--pill-color:#9b6644">Café</button>
+              <button type="button" data-value="rojo"     style="--pill-color:#cc3333">Rojo</button>
+            </div>
+          </div>
           <label class="full">
             Notas
             <textarea id="detailNotes" rows="3" placeholder="Color, cantidad, contexto o cualquier detalle"></textarea>

@@ -1,70 +1,32 @@
+// Single source of truth for all event types.
+// groupType  → the id stored in the DB (diaper-pee / diaper-poop both save as "diaper")
+// groupLabel → label used in the edit-dialog select for grouped types
+// session    → has a start/stop session button
+// modal      → always opens the detail modal instead of quick-saving
 const eventTypes = [
-  {
-    id: "bottle",
-    label: "Biberón",
-    icon: "icon-bottle",
-    tone: "mint",
-    hint: "Toma rapida o con inicio y fin opcional.",
-    session: true,
-  },
-  {
-    id: "breast",
-    label: "Pecho",
-    icon: "icon-breast",
-    tone: "blue",
-    hint: "Permite guardar lado, inicio y fin.",
-    session: true,
-  },
-  {
-    id: "diaper-pee",
-    label: "Pis",
-    icon: "icon-diaper",
-    tone: "gold",
-    hint: "Panal solo con pis.",
-    groupType: "diaper",
-    defaults: { pee: true, poop: false },
-  },
-  {
-    id: "diaper-poop",
-    label: "Popó",
-    icon: "icon-diaper",
-    tone: "coral",
-    hint: "Panal con popo; se puede marcar tambien pis.",
-    groupType: "diaper",
-    defaults: { pee: false, poop: true },
-  },
-  {
-    id: "sleep",
-    label: "Sueño",
-    icon: "icon-sleep",
-    tone: "violet",
-    hint: "Si hace falta, guarda siesta con inicio y fin.",
-    session: true,
-  },
-  {
-    id: "spitup",
-    label: "Vómito",
-    icon: "icon-spit",
-    tone: "coral",
-    hint: "Registra buches, reflujo o vomito.",
-  },
+  // score = frecuencia relativa; mayor score → más abajo en la grilla (zona del pulgar)
+  { id: "event",      label: "Evento",   icon: "icon-event",  tone: "gold",   score:   5, modal: true, hint: "Anota un hito o momento especial." },
+  { id: "nails",      label: "Uñas",     icon: "icon-nails",  tone: "mint",   score:  10, hint: "Corte de uñas." },
+  { id: "bath",       label: "Baño",     icon: "icon-bath",   tone: "blue",   score:  20, hint: "Registra el baño del bebé." },
+  { id: "spitup",     label: "Vómito",   icon: "icon-spit",   tone: "coral",  score:  40, hint: "Registra buches, reflujo o vomito." },
+  { id: "sleep",      label: "Sueño",    icon: "icon-sleep",  tone: "violet", score:  60, session: true, hint: "Si hace falta, guarda siesta con inicio y fin." },
+  { id: "diaper-poop",label: "Pupú",     icon: "icon-diaper", tone: "coral",  score:  70, groupType: "diaper", groupLabel: "Panal", defaults: { pee: false, poop: true  }, hint: "Panal con popo; se puede marcar tambien pis." },
+  { id: "diaper-pee", label: "Miaito",   icon: "icon-diaper", tone: "gold",   score:  80, groupType: "diaper", groupLabel: "Panal", defaults: { pee: true,  poop: false }, hint: "Panal solo con pis." },
+  { id: "bottle",     label: "Teterito", icon: "icon-bottle", tone: "mint",   score:  95, session: true, hint: "Toma rapida o con inicio y fin opcional." },
+  { id: "breast",     label: "Tetica",   icon: "icon-breast", tone: "blue",   score: 100, session: true, hint: "Permite guardar lado, inicio y fin." },
 ];
 
-const typeOptions = [
-  { id: "bottle", label: "Biberón" },
-  { id: "breast", label: "Pecho" },
-  { id: "diaper", label: "Panal" },
-  { id: "sleep", label: "Sueño" },
-  { id: "spitup", label: "Vómito" },
-];
-
-const typeChipMeta = {
-  bottle: { icon: "icon-bottle", tone: "mint" },
-  breast: { icon: "icon-breast", tone: "blue" },
-  diaper: { icon: "icon-diaper", tone: "gold" },
-  sleep: { icon: "icon-sleep", tone: "violet" },
-  spitup: { icon: "icon-spit", tone: "coral" },
-};
+// Derived: one entry per stored type (deduplicates grouped types like diaper).
+// Used for the edit-dialog select and the filter chips.
+const storageTypes = (() => {
+  const seen = new Set();
+  return eventTypes.filter(t => {
+    const id = t.groupType || t.id;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  }).map(t => ({ id: t.groupType || t.id, label: t.groupLabel || t.label, icon: t.icon, tone: t.tone }));
+})();
 
 let entries = [];
 let sessions = {};
@@ -90,15 +52,17 @@ const exportDialog = document.querySelector("#exportDialog");
 const exportText = document.querySelector("#exportText");
 
 const fields = {
-  type: document.querySelector("#detailType"),
-  time: document.querySelector("#detailTime"),
-  start: document.querySelector("#detailStart"),
-  end: document.querySelector("#detailEnd"),
-  amount: document.querySelector("#detailAmount"),
-  side: document.querySelector("#detailSide"),
-  pee: document.querySelector("#detailPee"),
-  poop: document.querySelector("#detailPoop"),
-  notes: document.querySelector("#detailNotes"),
+  type:        document.querySelector("#detailType"),
+  time:        document.querySelector("#detailTime"),
+  start:       document.querySelector("#detailStart"),
+  end:         document.querySelector("#detailEnd"),
+  amount:      document.querySelector("#detailAmount"),
+  side:        document.querySelector("#detailSide"),
+  pee:         document.querySelector("#detailPee"),
+  poop:        document.querySelector("#detailPoop"),
+  diaperQty:   document.querySelector("#detailDiaperQty"),
+  diaperColor: document.querySelector("#detailDiaperColor"),
+  notes:       document.querySelector("#detailNotes"),
 };
 
 let currentOffset = 0; // minutes from now (0 = now, negative = past)
@@ -122,6 +86,7 @@ async function init() {
 
 function wireEvents() {
   wireDragScrub();
+  wirePillButtons();
 
   eventTime.addEventListener("input", () => {
     useCurrentTime = false;
@@ -167,8 +132,8 @@ function wireEvents() {
 }
 
 function populateTypeOptions() {
-  fields.type.innerHTML = typeOptions
-    .map((type) => `<option value="${type.id}">${type.label}</option>`)
+  fields.type.innerHTML = storageTypes
+    .map((t) => `<option value="${t.id}">${t.label}</option>`)
     .join("");
 }
 
@@ -220,7 +185,8 @@ function applyOffset(minutes) {
 }
 
 function renderEvents() {
-  eventGrid.innerHTML = eventTypes
+  const sorted = [...eventTypes].sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+  eventGrid.innerHTML = sorted
     .map((type) => {
       const running = sessions[type.id];
       const lastTs = lastEntryTimestamp(type.id);
@@ -246,7 +212,9 @@ function renderEvents() {
           </button>`
         : "";
 
-      return `<article class="event-card" data-tone="${type.tone}">
+      return `<article class="event-card" data-tone="${type.tone}" data-add="${type.id}"
+          role="button" tabindex="0"
+          title="Registrar ${type.label}" aria-label="Registrar ${type.label}">
         <div class="event-main">
           <span class="event-icon"><svg><use href="#${type.icon}"></use></svg></span>
           <div class="event-copy">
@@ -257,34 +225,28 @@ function renderEvents() {
             <div class="card-elapsed">${elapsedHtml}</div>
           </div>
         </div>
-        <div class="card-actions">
-          <button class="quick-add" data-add="${type.id}" type="button" title="Registrar ${type.label}" aria-label="Registrar ${type.label}">
-            <svg><use href="#icon-plus"></use></svg>
-            Registrar
-          </button>
-          ${sessionBtn}
-        </div>
+        ${sessionBtn ? `<div class="card-actions">${sessionBtn}</div>` : ""}
       </article>`;
     })
     .join("");
 
-  eventGrid.querySelectorAll("[data-add]").forEach((button) => {
-    wireLongPress(button, () => openNewEntryModal(button.dataset.add));
-    button.addEventListener("click", () => {
+  eventGrid.querySelectorAll(".event-card[data-add]").forEach((card) => {
+    wireLongPress(card, () => openNewEntryModal(card.dataset.add));
+    card.addEventListener("click", (e) => {
       if (suppressNextClick) { suppressNextClick = false; return; }
-      addQuickEntry(button.dataset.add);
+      if (e.target.closest(".session-btn")) return;
+      const type = eventTypes.find((t) => t.id === card.dataset.add);
+      if (type?.modal) openNewEntryModal(card.dataset.add);
+      else addQuickEntry(card.dataset.add);
     });
-  });
-
-  eventGrid.querySelectorAll(".event-card").forEach((card) => {
     card.addEventListener("contextmenu", (e) => {
       e.preventDefault();
-      const typeId = card.querySelector("[data-add]")?.dataset.add;
-      if (typeId) openNewEntryModal(typeId);
+      openNewEntryModal(card.dataset.add);
     });
   });
 
   eventGrid.querySelectorAll("[data-session]").forEach((button) => {
+    button.addEventListener("pointerdown", (e) => e.stopPropagation());
     button.addEventListener("click", () => toggleSession(button.dataset.session));
   });
 }
@@ -406,7 +368,8 @@ function renderTimeline() {
       const type = typeDisplay(entry);
       const tone = entryTone(entry);
       const stamp = new Date(entry.timestamp);
-      return `<article class="entry-row" data-tone="${tone}">
+      return `<article class="entry-row" data-tone="${tone}" data-edit="${entry.id}"
+          role="button" tabindex="0" aria-label="Editar ${type.label}">
         <div class="entry-stamp">
           <div class="entry-time">${formatTime(stamp)}</div>
           <div class="entry-date">${formatDate(stamp)}</div>
@@ -419,9 +382,6 @@ function renderTimeline() {
           <div class="entry-meta">${entrySummary(entry)}</div>
         </div>
         <div class="row-actions">
-          <button class="icon-button" data-edit="${entry.id}" type="button" aria-label="Editar ${type.label}">
-            <svg><use href="#icon-edit"></use></svg>
-          </button>
           <button class="icon-button" data-delete="${entry.id}" type="button" aria-label="Eliminar ${type.label}">
             <svg><use href="#icon-trash"></use></svg>
           </button>
@@ -430,11 +390,15 @@ function renderTimeline() {
     })
     .join("");
 
-  timeline.querySelectorAll("[data-edit]").forEach((button) => {
-    button.addEventListener("click", () => openEditor(button.dataset.edit, false));
+  timeline.querySelectorAll(".entry-row[data-edit]").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".row-actions")) return;
+      openEditor(row.dataset.edit, false);
+    });
   });
 
   timeline.querySelectorAll("[data-delete]").forEach((button) => {
+    button.addEventListener("pointerdown", (e) => e.stopPropagation());
     button.addEventListener("click", () => deleteEntry(button.dataset.delete));
   });
 }
@@ -452,12 +416,15 @@ function openEditor(id, isNew) {
   fields.time.value = toDatetimeLocal(new Date(entry.timestamp));
   fields.start.value = entry.startTime ? toDatetimeLocal(new Date(entry.startTime)) : "";
   fields.end.value = entry.endTime ? toDatetimeLocal(new Date(entry.endTime)) : "";
-  fields.amount.value = entry.amount || "";
-  fields.side.value = entry.side || "";
-  fields.pee.checked = Boolean(entry.pee);
-  fields.poop.checked = Boolean(entry.poop);
-  fields.notes.value = entry.notes || "";
+  fields.amount.value      = entry.type !== "diaper" ? (entry.amount || "") : "";
+  fields.side.value        = entry.type !== "diaper" ? (entry.side   || "") : "";
+  fields.diaperQty.value   = entry.type === "diaper" ? (entry.amount || "") : "";
+  fields.diaperColor.value = entry.type === "diaper" ? (entry.side   || "") : "";
+  fields.pee.checked   = Boolean(entry.pee);
+  fields.poop.checked  = Boolean(entry.poop);
+  fields.notes.value   = entry.notes || "";
   updateDetailVisibility(entry.type);
+  syncPillButtons();
   entryDialog.showModal();
 }
 
@@ -467,6 +434,31 @@ function updateDetailVisibility(type) {
   });
   document.querySelectorAll(".optional-time").forEach((field) => {
     field.classList.toggle("hidden", !["bottle", "breast", "sleep"].includes(type));
+  });
+}
+
+function syncPillButtons() {
+  document.querySelectorAll(".pill-group").forEach((group) => {
+    const target = document.querySelector(group.dataset.target);
+    if (!target) return;
+    group.querySelectorAll("button").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.value === target.value);
+    });
+  });
+}
+
+function wirePillButtons() {
+  document.querySelectorAll(".pill-group button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const group  = btn.closest(".pill-group");
+      const target = document.querySelector(group.dataset.target);
+      if (!target) return;
+      const newVal = target.value === btn.dataset.value ? "" : btn.dataset.value;
+      target.value = newVal;
+      group.querySelectorAll("button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.value === newVal);
+      });
+    });
   });
 }
 
@@ -480,8 +472,8 @@ async function saveDialogEntry() {
     timestamp: fromDatetimeLocal(fields.time.value).toISOString(),
     startTime: fields.start.value ? fromDatetimeLocal(fields.start.value).toISOString() : "",
     endTime: fields.end.value ? fromDatetimeLocal(fields.end.value).toISOString() : "",
-    amount: fields.amount.value.trim(),
-    side: fields.side.value,
+    amount: fields.type.value === "diaper" ? fields.diaperQty.value   : fields.amount.value.trim(),
+    side:   fields.type.value === "diaper" ? fields.diaperColor.value : fields.side.value,
     pee: fields.pee.checked,
     poop: fields.poop.checked,
     notes: fields.notes.value.trim(),
@@ -576,13 +568,12 @@ function renderAll() {
 
 function renderTypeFilters() {
   const bar = document.querySelector("#typeFilterBar");
-  bar.innerHTML = typeOptions
-    .map((type) => {
-      const meta = typeChipMeta[type.id] || { icon: "icon-plus", tone: "blue" };
-      const isActive = activeTypeFilter.has(type.id);
-      return `<button class="type-chip${isActive ? " active" : ""}" data-type-filter="${type.id}" data-tone="${meta.tone}" type="button">
-        <svg><use href="#${meta.icon}"></use></svg>
-        ${type.label}
+  bar.innerHTML = storageTypes
+    .map((t) => {
+      const isActive = activeTypeFilter.has(t.id);
+      return `<button class="type-chip${isActive ? " active" : ""}" data-type-filter="${t.id}" data-tone="${t.tone}" type="button">
+        <svg><use href="#${t.icon}"></use></svg>
+        ${t.label}
       </button>`;
     })
     .join("");
@@ -628,20 +619,15 @@ function sortEntries(items) {
 }
 
 function typeDisplay(entry) {
-  const byType = {
-    bottle: { label: "Biberón", icon: "icon-bottle" },
-    breast: { label: "Pecho", icon: "icon-breast" },
-    diaper: { label: diaperLabel(entry), icon: "icon-diaper" },
-    sleep: { label: "Sueño", icon: "icon-sleep" },
-    spitup: { label: "Vómito", icon: "icon-spit" },
-  };
-  return byType[entry.type] || { label: "Registro", icon: "icon-plus" };
+  const t = storageTypes.find((s) => s.id === entry.type);
+  if (!t) return { label: "Registro", icon: "icon-plus" };
+  return { label: entry.type === "diaper" ? diaperLabel(entry) : t.label, icon: t.icon };
 }
 
 function diaperLabel(entry) {
-  if (entry.pee && entry.poop) return "Pis y popó";
-  if (entry.poop) return "Popó";
-  if (entry.pee) return "Pis";
+  if (entry.pee && entry.poop) return "Miaito y pupú";
+  if (entry.poop) return "Pupú";
+  if (entry.pee) return "Miaito";
   return "Panal";
 }
 
@@ -738,14 +724,8 @@ function escapeHtml(value) {
 
 // Returns the color tone for a given entry (used for timeline row coloring)
 function entryTone(entry) {
-  const tones = {
-    bottle: "mint",
-    breast: "blue",
-    sleep: "violet",
-    spitup: "coral",
-    diaper: entry.poop ? "coral" : "gold",
-  };
-  return tones[entry.type] || "blue";
+  if (entry.type === "diaper") return entry.poop ? "coral" : "gold";
+  return storageTypes.find((t) => t.id === entry.type)?.tone ?? "blue";
 }
 
 // Returns the ISO timestamp of the most recent entry for a card type, or null

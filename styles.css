@@ -291,12 +291,21 @@ h2 {
   border-radius: var(--radius);
   background: var(--panel);
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
   transition: border-color var(--t), box-shadow var(--t), transform var(--t);
 }
 .event-card:hover {
   border-color: var(--accent);
   box-shadow: 0 4px 16px rgba(0,0,0,0.10);
   transform: translateY(-1px);
+}
+@keyframes longPressRing {
+  from { box-shadow: var(--shadow-sm), 0 0 0 0px var(--soft); }
+  to   { box-shadow: var(--shadow-sm), 0 0 0 6px transparent; }
+}
+.event-card.pressing {
+  animation: longPressRing 0.5s ease forwards;
+  transform: scale(0.98);
 }
 
 .event-main {
@@ -383,39 +392,8 @@ h2 {
 }
 
 .card-actions {
-  display: grid;
-  grid-template-columns: repeat(2, 64px);
-  gap: 8px;
+  display: flex;
   align-items: center;
-}
-
-.quick-add {
-  width: 64px;
-  min-height: 64px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  color: #fff;
-  background: var(--accent);
-  font-size: 0;
-  font-weight: 760;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-}
-.quick-add svg { width: 22px; height: 22px; }
-.quick-add:hover { filter: brightness(0.9); }
-
-@keyframes longPressRing {
-  from { box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 0 0 0px var(--soft); }
-  to   { box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 0 0 6px transparent; }
-}
-.quick-add.pressing {
-  animation: longPressRing 0.5s ease forwards;
-  transform: scale(0.94);
 }
 
 .session-btn {
@@ -533,6 +511,7 @@ h2 {
   border-left: 4px solid var(--accent, var(--line));
   border-radius: var(--radius-sm);
   background: #fff;
+  cursor: pointer;
   animation: rowIn 0.17s ease both;
   transition: border-color var(--t), box-shadow var(--t), transform var(--t);
 }
@@ -713,6 +692,41 @@ textarea:focus {
 textarea { resize: vertical; }
 .full { grid-column: 1 / -1; }
 
+.field-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pill-group button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: background var(--t), border-color var(--t), color var(--t);
+}
+.pill-group button:hover {
+  border-color: var(--pill-color, var(--blue));
+}
+.pill-group button.active {
+  background: var(--pill-color, var(--blue));
+  border-color: var(--pill-color, var(--blue));
+  color: #fff;
+}
+
 .check-row {
   margin: 0;
   padding: 9px 10px;
@@ -873,20 +887,7 @@ textarea { resize: vertical; }
   .card-label { font-size: 0.76rem; }
   .elapsed-sub { font-size: 0.54rem; }
   .elapsed-val { font-size: 0.9rem; }
-  .card-actions {
-    grid-template-columns: repeat(2, 52px);
-    gap: 5px;
-  }
-  .quick-add {
-    width: 52px;
-    min-height: 52px;
-    padding: 0;
-  }
-  .quick-add svg { display: block; width: 20px; height: 20px; }
-  .session-btn {
-    width: 52px;
-    height: 52px;
-  }
+  .session-btn { width: 52px; height: 52px; }
   .session-btn svg { width: 20px; height: 20px; }
   .timeline-section { gap: 8px; }
   .entry-row {
@@ -929,12 +930,6 @@ textarea { resize: vertical; }
     padding: 8px;
     gap: 6px;
   }
-  .card-actions { grid-template-columns: repeat(2, 52px); }
-  .quick-add,
-  .session-btn {
-    width: 52px;
-    min-height: 52px;
-    height: 52px;
-  }
+  .session-btn { width: 52px; height: 52px; }
   .elapsed-val { font-size: clamp(1.18rem, 3vw, 1.55rem); }
 }
