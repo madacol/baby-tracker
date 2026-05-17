@@ -58,9 +58,19 @@ const typeOptions = [
   { id: "spitup", label: "Vómito" },
 ];
 
+const typeChipMeta = {
+  bottle: { icon: "icon-bottle", tone: "mint" },
+  breast: { icon: "icon-breast", tone: "blue" },
+  diaper: { icon: "icon-diaper", tone: "gold" },
+  sleep: { icon: "icon-sleep", tone: "violet" },
+  spitup: { icon: "icon-spit", tone: "coral" },
+};
+
 let entries = [];
 let sessions = {};
-let activeFilter = "today";
+let activeFilter = "24h";
+let activeTypeFilter = new Set();
+let suppressNextClick = false;
 let editingId = null;
 let useCurrentTime = true;
 let isSaving = false;
@@ -68,7 +78,7 @@ let isSaving = false;
 const eventGrid = document.querySelector("#eventGrid");
 const timeline = document.querySelector("#timeline");
 const eventTime = document.querySelector("#eventTime");
-const nowButton = document.querySelector("#nowButton");
+const timeWheel = document.querySelector("#timeWheel");
 const timeMode = document.querySelector("#timeMode");
 const countLabel = document.querySelector("#countLabel");
 const todaySummary = document.querySelector("#todaySummary");
@@ -89,39 +99,35 @@ const fields = {
   notes: document.querySelector("#detailNotes"),
 };
 
+const timeOffsets = Array.from({ length: 289 }, (_, index) => index * -5);
+let wheelScrollFrame = null;
+let isSyncingWheel = false;
+
 init();
 
 async function init() {
   populateTypeOptions();
+  populateTimeWheel();
+  syncWheelPadding();
   setNowMode();
   renderEvents();
+  renderTypeFilters();
   renderTimeline();
   wireEvents();
   await refreshState();
   setInterval(() => {
     if (useCurrentTime) updateTimeInput(new Date());
-    renderSessionButtons();
+    renderAll(); // refresh session timers + elapsed hints
   }, 30000);
   setInterval(refreshState, 15000);
 }
 
 function wireEvents() {
-  nowButton.addEventListener("click", setNowMode);
-
-  document.querySelectorAll("[data-offset]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const minutes = Number(button.dataset.offset);
-      const date = new Date();
-      date.setMinutes(date.getMinutes() + minutes);
-      useCurrentTime = false;
-      updateTimeInput(date);
-      markTimeMode(`Hora ajustada ${Math.abs(minutes)} min atras.`);
-    });
-  });
+  wireTimeWheel();
 
   eventTime.addEventListener("input", () => {
     useCurrentTime = false;
-    markTimeMode("Hora manual para el proximo registro.");
+    markTimeMode("manual", null);
   });
 
   document.querySelectorAll(".segmented button").forEach((button) => {
@@ -165,54 +171,112 @@ function populateTypeOptions() {
     .join("");
 }
 
+function populateTimeWheel() {
+  timeWheel.innerHTML = timeOffsets
+    .map((minutes) => {
+      const label = minutes === 0 ? "Ahora" : offsetLabel(minutes);
+      return `<button class="time-tick" data-offset="${minutes}" type="button">
+        <span>${label}</span>
+        <small>${wheelClockLabel(minutes)}</small>
+      </button>`;
+    })
+    .join("");
+}
+
+function wireTimeWheel() {
+  window.addEventListener("resize", () => {
+    syncWheelPadding();
+    centerWheelTick(timeWheel.querySelector(".time-tick.active"));
+  });
+
+  timeWheel.addEventListener(
+    "scroll",
+    () => {
+      if (isSyncingWheel) return;
+      if (wheelScrollFrame) cancelAnimationFrame(wheelScrollFrame);
+      wheelScrollFrame = requestAnimationFrame(() => {
+        const tick = nearestWheelTick();
+        if (!tick) return;
+        selectWheelOffset(Number(tick.dataset.offset), tick, false);
+      });
+    },
+    { passive: true },
+  );
+
+  timeWheel.addEventListener("click", (event) => {
+    const tick = event.target.closest(".time-tick");
+    if (!tick) return;
+    selectWheelOffset(Number(tick.dataset.offset), tick, true);
+  });
+}
+
 function renderEvents() {
   eventGrid.innerHTML = eventTypes
     .map((type) => {
       const running = sessions[type.id];
-      const sessionButton = type.session
-        ? `<button class="mini-button ${running ? "running" : ""}" data-session="${type.id}" type="button" title="${running ? "Terminar" : "Iniciar"}">
+      const lastTs = lastEntryTimestamp(type.id);
+
+      let elapsedHtml;
+      if (running) {
+        elapsedHtml = `
+          <span class="elapsed-sub">en sesión</span>
+          <span class="elapsed-val session-live">${durationText(running.startedAt)}</span>`;
+      } else if (lastTs) {
+        elapsedHtml = `
+          <span class="elapsed-sub">último</span>
+          <span class="elapsed-val">${escapeHtml(cardElapsed(lastTs))}</span>`;
+      } else {
+        elapsedHtml = `<span class="elapsed-sub" style="opacity:.55">sin registros</span>`;
+      }
+
+      const sessionBtn = type.session
+        ? `<button class="session-btn ${running ? "running" : ""}" data-session="${type.id}" type="button"
+             title="${running ? "Terminar sesión" : "Iniciar sesión"}"
+             aria-label="${running ? "Terminar sesión" : "Iniciar sesión"}">
             <svg><use href="#${running ? "icon-stop" : "icon-play"}"></use></svg>
-            <span>${running ? durationText(running.startedAt) : "Inicio"}</span>
           </button>`
         : "";
 
       return `<article class="event-card" data-tone="${type.tone}">
-        <div>
-          <div class="event-title">
-            <span class="event-icon"><svg><use href="#${type.icon}"></use></svg></span>
-            <span>${type.label}</span>
+        <div class="event-main">
+          <span class="event-icon"><svg><use href="#${type.icon}"></use></svg></span>
+          <div class="event-copy">
+            <div class="card-top">
+              <span class="card-label">${type.label}</span>
+              ${running ? '<span class="running-dot"></span>' : ""}
+            </div>
+            <div class="card-elapsed">${elapsedHtml}</div>
           </div>
-          <p>${type.hint}</p>
         </div>
-        <div class="event-actions">
-          <button class="quick-add" data-add="${type.id}" type="button">
+        <div class="card-actions">
+          <button class="quick-add" data-add="${type.id}" type="button" title="Registrar ${type.label}" aria-label="Registrar ${type.label}">
             <svg><use href="#icon-plus"></use></svg>
             Registrar
           </button>
-          ${sessionButton}
+          ${sessionBtn}
         </div>
       </article>`;
     })
     .join("");
 
   eventGrid.querySelectorAll("[data-add]").forEach((button) => {
-    button.addEventListener("click", () => addQuickEntry(button.dataset.add));
+    wireLongPress(button, () => openNewEntryModal(button.dataset.add));
+    button.addEventListener("click", () => {
+      if (suppressNextClick) { suppressNextClick = false; return; }
+      addQuickEntry(button.dataset.add);
+    });
+  });
+
+  eventGrid.querySelectorAll(".event-card").forEach((card) => {
+    card.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      const typeId = card.querySelector("[data-add]")?.dataset.add;
+      if (typeId) openNewEntryModal(typeId);
+    });
   });
 
   eventGrid.querySelectorAll("[data-session]").forEach((button) => {
     button.addEventListener("click", () => toggleSession(button.dataset.session));
-  });
-}
-
-function renderSessionButtons() {
-  eventGrid.querySelectorAll("[data-session]").forEach((button) => {
-    const type = button.dataset.session;
-    const running = sessions[type];
-    button.classList.toggle("running", Boolean(running));
-    button.title = running ? "Terminar" : "Iniciar";
-    button.innerHTML = `<svg><use href="#${running ? "icon-stop" : "icon-play"}"></use></svg><span>${
-      running ? durationText(running.startedAt) : "Inicio"
-    }</span>`;
   });
 }
 
@@ -234,8 +298,51 @@ async function addQuickEntry(buttonTypeId) {
     ...type.defaults,
   };
 
+  await createEntry(entry);
+  showToast(`${type.label} registrado`, "success");
+}
+
+async function openNewEntryModal(buttonTypeId) {
+  if (isSaving) return;
+  const type = eventTypes.find((item) => item.id === buttonTypeId);
+  const entryType = type.groupType || type.id;
+  const timestamp = currentSelectedDate().toISOString();
+  const entry = {
+    type: entryType,
+    timestamp,
+    startTime: "",
+    endTime: "",
+    amount: "",
+    side: "",
+    pee: false,
+    poop: false,
+    notes: "",
+    ...type.defaults,
+  };
   const created = await createEntry(entry);
   if (created) openEditor(created.id, true);
+}
+
+function wireLongPress(element, callback, delay = 500) {
+  let timer = null;
+
+  element.addEventListener("pointerdown", () => {
+    element.classList.add("pressing");
+    timer = setTimeout(() => {
+      timer = null;
+      element.classList.remove("pressing");
+      suppressNextClick = true;
+      callback();
+    }, delay);
+  });
+
+  const cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    element.classList.remove("pressing");
+  };
+  element.addEventListener("pointerup", cancel);
+  element.addEventListener("pointercancel", cancel);
+  element.addEventListener("pointermove", cancel);
 }
 
 async function toggleSession(typeId) {
@@ -269,7 +376,9 @@ async function toggleSession(typeId) {
 
 function renderTimeline() {
   const visible = sortEntries(entries).filter((entry) => {
-    return activeFilter === "all" || isToday(new Date(entry.timestamp));
+    const matchesTime = activeFilter === "all" || isWithin24h(new Date(entry.timestamp));
+    const matchesType = activeTypeFilter.size === 0 || activeTypeFilter.has(entry.type);
+    return matchesTime && matchesType;
   });
 
   countLabel.textContent = visible.length
@@ -286,8 +395,9 @@ function renderTimeline() {
   timeline.innerHTML = visible
     .map((entry) => {
       const type = typeDisplay(entry);
+      const tone = entryTone(entry);
       const stamp = new Date(entry.timestamp);
-      return `<article class="entry-row">
+      return `<article class="entry-row" data-tone="${tone}">
         <div class="entry-stamp">
           <div class="entry-time">${formatTime(stamp)}</div>
           <div class="entry-date">${formatDate(stamp)}</div>
@@ -386,15 +496,18 @@ async function updateEntry(entry) {
     const saved = await apiRequest(`/api/entries/${entry.id}`, { method: "PUT", body: entry });
     entries = entries.map((item) => (item.id === saved.id ? saved : item));
     renderAll();
+    showToast("Registro guardado", "success");
     return saved;
   });
 }
 
 async function deleteEntry(id) {
+  if (!confirm("¿Eliminar este registro?")) return;
   return withSaving(async () => {
     await apiRequest(`/api/entries/${id}`, { method: "DELETE" });
     entries = entries.filter((entry) => entry.id !== id);
     renderAll();
+    showToast("Registro eliminado", "info");
   });
 }
 
@@ -448,18 +561,104 @@ function showConnectionError(error) {
 
 function renderAll() {
   renderEvents();
+  renderTypeFilters();
   renderTimeline();
+}
+
+function renderTypeFilters() {
+  const bar = document.querySelector("#typeFilterBar");
+  bar.innerHTML = typeOptions
+    .map((type) => {
+      const meta = typeChipMeta[type.id] || { icon: "icon-plus", tone: "blue" };
+      const isActive = activeTypeFilter.has(type.id);
+      return `<button class="type-chip${isActive ? " active" : ""}" data-type-filter="${type.id}" data-tone="${meta.tone}" type="button">
+        <svg><use href="#${meta.icon}"></use></svg>
+        ${type.label}
+      </button>`;
+    })
+    .join("");
+
+  bar.querySelectorAll("[data-type-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const clicked = button.dataset.typeFilter;
+      if (activeTypeFilter.has(clicked)) {
+        activeTypeFilter.delete(clicked);
+      } else {
+        activeTypeFilter.add(clicked);
+      }
+      renderTypeFilters();
+      renderTimeline();
+    });
+  });
 }
 
 function setNowMode() {
   useCurrentTime = true;
   updateTimeInput(new Date());
-  markTimeMode("Por defecto se guarda con la hora actual.");
+  const tick = timeWheel.querySelector('[data-offset="0"]');
+  syncWheelPadding();
+  markTimeMode("Ahora", 0);
+  centerWheelTick(tick);
 }
 
-function markTimeMode(text) {
-  nowButton.classList.toggle("active", useCurrentTime);
+function markTimeMode(text, activeOffset = null) {
+  timeWheel.querySelectorAll(".time-tick").forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.offset) === activeOffset);
+  });
   timeMode.textContent = text;
+}
+
+function selectWheelOffset(minutes, tick, shouldCenter) {
+  useCurrentTime = minutes === 0;
+  const date = new Date();
+  date.setMinutes(date.getMinutes() + minutes);
+  updateTimeInput(date);
+  markTimeMode(minutes === 0 ? "Ahora" : offsetLabel(minutes), minutes);
+  if (shouldCenter) centerWheelTick(tick);
+}
+
+function centerWheelTick(tick) {
+  if (!tick) return;
+  syncWheelPadding();
+  isSyncingWheel = true;
+  const top = tick.offsetTop - (timeWheel.clientHeight - tick.offsetHeight) / 2;
+  timeWheel.scrollTo({ top });
+  window.setTimeout(() => {
+    isSyncingWheel = false;
+  }, 120);
+}
+
+function syncWheelPadding() {
+  const inset = Math.max(46, Math.floor(timeWheel.clientHeight / 2 - 19));
+  timeWheel.style.setProperty("--wheel-inset", `${inset}px`);
+}
+
+function nearestWheelTick() {
+  const ticks = [...timeWheel.querySelectorAll(".time-tick")];
+  const wheelBounds = timeWheel.getBoundingClientRect();
+  const center = wheelBounds.top + wheelBounds.height / 2;
+  return ticks.reduce((nearest, tick) => {
+    const bounds = tick.getBoundingClientRect();
+    const distance = Math.abs(bounds.top + bounds.height / 2 - center);
+    if (!nearest || distance < nearest.distance) return { tick, distance };
+    return nearest;
+  }, null)?.tick;
+}
+
+function offsetLabel(minutes) {
+  const absolute = Math.abs(minutes);
+  if (absolute >= 60) {
+    const hours = Math.floor(absolute / 60);
+    const rest = absolute % 60;
+    return rest ? `−${hours}h ${rest}m` : `−${hours}h`;
+  }
+  return `−${absolute}m`;
+}
+
+function wheelClockLabel(minutes) {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() + minutes);
+  return formatTime(date);
 }
 
 function currentSelectedDate() {
@@ -538,6 +737,10 @@ function durationBetween(startIso, endIso) {
   return `${rest}m`;
 }
 
+function isWithin24h(date) {
+  return Date.now() - date.getTime() < 24 * 60 * 60 * 1000;
+}
+
 function isToday(date) {
   const today = new Date();
   return (
@@ -577,4 +780,63 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+// Returns the color tone for a given entry (used for timeline row coloring)
+function entryTone(entry) {
+  const tones = {
+    bottle: "mint",
+    breast: "blue",
+    sleep: "violet",
+    spitup: "coral",
+    diaper: entry.poop ? "coral" : "gold",
+  };
+  return tones[entry.type] || "blue";
+}
+
+// Returns the ISO timestamp of the most recent entry for a card type, or null
+function lastEntryTimestamp(buttonTypeId) {
+  let matching;
+  if (buttonTypeId === "diaper-pee") {
+    matching = entries.filter((e) => e.type === "diaper" && e.pee);
+  } else if (buttonTypeId === "diaper-poop") {
+    matching = entries.filter((e) => e.type === "diaper" && e.poop);
+  } else {
+    matching = entries.filter((e) => e.type === buttonTypeId);
+  }
+  if (!matching.length) return null;
+  return matching.reduce((best, e) =>
+    new Date(e.timestamp) > new Date(best.timestamp) ? e : best,
+  ).timestamp;
+}
+
+// Compact elapsed format for the card hero: "ahora" / "5m" / "2h 15m" / "ayer" / "3d"
+function cardElapsed(isoDate) {
+  const diff = Math.floor((Date.now() - new Date(isoDate)) / 60000);
+  if (diff < 1) return "ahora";
+  if (diff < 60) return `${diff}m`;
+  const hours = Math.floor(diff / 60);
+  const mins = diff % 60;
+  if (hours < 24) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "ayer" : `${days}d`;
+}
+
+// Toast notification
+function showToast(message, type = "success") {
+  const container = document.querySelector("#toastContainer");
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  // Double rAF ensures the initial state is painted before transitioning
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      toast.classList.add("toast--visible");
+    });
+  });
+  setTimeout(() => {
+    toast.classList.remove("toast--visible");
+    setTimeout(() => toast.remove(), 350);
+  }, 2200);
 }

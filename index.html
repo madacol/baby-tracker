@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Registro del bebe</title>
+    <title>Registro del bebé</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -60,45 +60,51 @@
         <div class="brand">
           <span class="brand-mark"><svg><use href="#icon-baby"></use></svg></span>
           <div>
-            <h1>Registro del bebe</h1>
+            <h1>Registro del bebé</h1>
             <p id="todaySummary">Cargando...</p>
           </div>
         </div>
         <button class="ghost-button" id="exportButton" type="button">Exportar</button>
       </header>
 
-      <section class="time-panel" aria-labelledby="timeHeading">
-        <div>
-          <h2 id="timeHeading">Hora del registro</h2>
-          <p id="timeMode">Por defecto se guarda con la hora actual.</p>
-        </div>
-        <div class="time-controls">
-          <button class="chip active" id="nowButton" type="button">Ahora</button>
-          <button class="chip" data-offset="-5" type="button">-5 min</button>
-          <button class="chip" data-offset="-15" type="button">-15 min</button>
-          <button class="chip" data-offset="-30" type="button">-30 min</button>
-          <label class="time-input">
-            <svg><use href="#icon-clock"></use></svg>
-            <input id="eventTime" type="datetime-local" />
-          </label>
-        </div>
-      </section>
-
-      <section class="event-grid" aria-label="Eventos rapidos" id="eventGrid"></section>
-
-      <section class="timeline-section" aria-labelledby="timelineHeading">
-        <div class="section-head">
-          <div>
-            <h2 id="timelineHeading">Linea de tiempo</h2>
-            <p id="countLabel">Sin registros todavia.</p>
+      <div class="workspace">
+        <section class="capture-panel" aria-labelledby="captureHeading">
+          <div class="panel-head">
+            <div>
+              <h2 id="captureHeading">Registrar</h2>
+              <p>Hora seleccionada</p>
+            </div>
           </div>
-          <div class="segmented" role="group" aria-label="Filtro de registros">
-            <button class="active" data-filter="today" type="button">Hoy</button>
-            <button data-filter="all" type="button">Todo</button>
+
+          <div class="capture-body">
+            <section class="event-grid" aria-label="Eventos rápidos" id="eventGrid"></section>
+
+            <div class="time-strip" role="group" aria-label="Hora del registro">
+              <div class="time-wheel" id="timeWheel" tabindex="0" aria-label="Elegir hora por desplazamiento"></div>
+              <label class="time-input">
+                <svg><use href="#icon-clock"></use></svg>
+                <input id="eventTime" type="datetime-local" />
+              </label>
+              <span id="timeMode" class="strip-mode"></span>
+            </div>
           </div>
-        </div>
-        <div class="timeline" id="timeline"></div>
-      </section>
+        </section>
+
+        <section class="timeline-section" aria-labelledby="timelineHeading">
+          <div class="section-head">
+            <div>
+              <h2 id="timelineHeading">Línea de tiempo</h2>
+              <p id="countLabel">Sin registros todavía.</p>
+            </div>
+            <div class="segmented" role="group" aria-label="Filtro de registros">
+              <button class="active" data-filter="24h" type="button">24h</button>
+              <button data-filter="all" type="button">Todo</button>
+            </div>
+          </div>
+          <div class="type-filter-bar" id="typeFilterBar" role="group" aria-label="Filtrar por tipo"></div>
+          <div class="timeline" id="timeline"></div>
+        </section>
+      </div>
     </main>
 
     <dialog id="entryDialog" class="entry-dialog">
@@ -178,6 +184,7 @@
       </form>
     </dialog>
 
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="false"></div>
     <script src="app.js"></script>
   </body>
 </html>
