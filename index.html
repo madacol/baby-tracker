@@ -76,25 +76,25 @@
             </div>
           </div>
 
-          <div class="capture-body">
-            <section class="event-grid" aria-label="Eventos rápidos" id="eventGrid"></section>
+          <section class="event-grid" aria-label="Eventos rápidos" id="eventGrid"></section>
 
-            <div class="time-strip" role="group" aria-label="Hora del registro">
-              <div class="time-scrubber" id="timeScrubber" tabindex="0"
-                   role="spinbutton" aria-label="Ajustar hora arrastrando"
-                   title="Arrastra ↕ para cambiar la hora">
+          <div class="time-strip" role="group" aria-label="Hora del registro">
+            <div class="time-scrubber" id="timeScrubber" tabindex="0"
+                 role="spinbutton" aria-label="Ajustar hora arrastrando"
+                 title="Arrastra ◀▶ para cambiar la hora">
+              <div class="scrub-center">
                 <span class="scrub-arrow">▲</span>
                 <strong class="scrub-offset" id="scrubOffset">Ahora</strong>
                 <small class="scrub-clock" id="scrubClock"></small>
                 <span class="scrub-arrow">▼</span>
               </div>
-              <label class="time-input">
-                <svg><use href="#icon-clock"></use></svg>
-                <input id="eventTime" type="datetime-local" />
-              </label>
-              <span id="timeMode" class="strip-mode"></span>
             </div>
+            <label class="time-input">
+              <svg><use href="#icon-clock"></use></svg>
+              <input id="eventTime" type="datetime-local" />
+            </label>
           </div>
+          <span id="timeMode" class="strip-mode"></span>
         </section>
 
         <section class="timeline-section" aria-labelledby="timelineHeading">

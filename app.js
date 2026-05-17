@@ -179,7 +179,7 @@ function wireDragScrub() {
 
   timeScrubber.addEventListener("pointerdown", (e) => {
     startY = e.clientY;
-    startOffset = currentOffset;
+    startOffset = currentOffset ?? 0;
     timeScrubber.setPointerCapture(e.pointerId);
     timeScrubber.classList.add("dragging");
     e.preventDefault();
@@ -201,8 +201,8 @@ function wireDragScrub() {
   timeScrubber.addEventListener("pointercancel", endDrag);
 
   timeScrubber.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowUp")   { applyOffset(Math.max(-1440, currentOffset - 5)); e.preventDefault(); }
-    if (e.key === "ArrowDown") { applyOffset(Math.min(0,     currentOffset + 5)); e.preventDefault(); }
+    if (e.key === "ArrowUp")   { applyOffset(Math.max(-1440, (currentOffset ?? 0) - 5)); e.preventDefault(); }
+    if (e.key === "ArrowDown") { applyOffset(Math.min(0,     (currentOffset ?? 0) + 5)); e.preventDefault(); }
     if (e.key === "Home")      { applyOffset(0); e.preventDefault(); }
   });
 }

@@ -127,21 +127,14 @@ h2 {
 }
 
 .workspace {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: minmax(0, calc(100dvh - 102px)) auto;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.capture-panel,
-.timeline-section {
-  min-height: 0;
-  overflow: hidden;
-}
-
 .capture-panel {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   padding: 12px;
 }
@@ -154,47 +147,34 @@ h2 {
   gap: 12px;
 }
 
-.capture-body {
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(136px, 172px);
-  gap: 10px;
-}
-
 .time-strip {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto;
-  align-content: stretch;
-  gap: 7px;
-  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
   background: var(--panel-alt);
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
 
-.strip-mode {
-  min-height: 20px;
-  color: var(--blue);
-  font-size: 0.76rem;
-  font-weight: 750;
-  text-align: center;
-}
+.strip-mode { display: none; }
 
 .time-scrubber {
-  min-height: 0;
+  flex: 1;
+  min-width: 0;
+  height: 80px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 8px 6px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
   cursor: ns-resize;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: #fff;
   transition: background var(--t), border-color var(--t);
 }
@@ -209,15 +189,24 @@ h2 {
 .time-scrubber.dragging {
   background: var(--blue-soft);
   border-color: var(--blue);
+  cursor: grabbing;
 }
 .scrub-arrow {
   color: var(--muted);
-  font-size: 0.65rem;
-  opacity: 0.45;
+  font-size: 0.7rem;
+  opacity: 0.5;
   line-height: 1;
 }
+.scrub-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
 .scrub-offset {
-  font-size: 1.25rem;
+  font-size: 0.95rem;
   font-weight: 820;
   color: var(--ink);
   line-height: 1.1;
@@ -227,7 +216,7 @@ h2 {
 }
 .scrub-clock {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 720;
 }
 
@@ -286,17 +275,12 @@ h2 {
 }
 
 .event-grid {
-  min-height: 0;
-  align-self: stretch;
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-auto-rows: minmax(0, 1fr);
-  align-content: stretch;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
 .event-card {
-  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
