@@ -80,7 +80,14 @@
             <section class="event-grid" aria-label="Eventos rápidos" id="eventGrid"></section>
 
             <div class="time-strip" role="group" aria-label="Hora del registro">
-              <div class="time-wheel" id="timeWheel" tabindex="0" aria-label="Elegir hora por desplazamiento"></div>
+              <div class="time-scrubber" id="timeScrubber" tabindex="0"
+                   role="spinbutton" aria-label="Ajustar hora arrastrando"
+                   title="Arrastra ↕ para cambiar la hora">
+                <span class="scrub-arrow">▲</span>
+                <strong class="scrub-offset" id="scrubOffset">Ahora</strong>
+                <small class="scrub-clock" id="scrubClock"></small>
+                <span class="scrub-arrow">▼</span>
+              </div>
               <label class="time-input">
                 <svg><use href="#icon-clock"></use></svg>
                 <input id="eventTime" type="datetime-local" />

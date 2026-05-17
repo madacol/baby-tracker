@@ -78,7 +78,9 @@ let isSaving = false;
 const eventGrid = document.querySelector("#eventGrid");
 const timeline = document.querySelector("#timeline");
 const eventTime = document.querySelector("#eventTime");
-const timeWheel = document.querySelector("#timeWheel");
+const timeScrubber = document.querySelector("#timeScrubber");
+const scrubOffsetEl = document.querySelector("#scrubOffset");
+const scrubClockEl  = document.querySelector("#scrubClock");
 const timeMode = document.querySelector("#timeMode");
 const countLabel = document.querySelector("#countLabel");
 const todaySummary = document.querySelector("#todaySummary");
@@ -99,16 +101,12 @@ const fields = {
   notes: document.querySelector("#detailNotes"),
 };
 
-const timeOffsets = Array.from({ length: 289 }, (_, index) => index * -5);
-let wheelScrollFrame = null;
-let isSyncingWheel = false;
+let currentOffset = 0; // minutes from now (0 = now, negative = past)
 
 init();
 
 async function init() {
   populateTypeOptions();
-  populateTimeWheel();
-  syncWheelPadding();
   setNowMode();
   renderEvents();
   renderTypeFilters();
@@ -123,11 +121,14 @@ async function init() {
 }
 
 function wireEvents() {
-  wireTimeWheel();
+  wireDragScrub();
 
   eventTime.addEventListener("input", () => {
     useCurrentTime = false;
-    markTimeMode("manual", null);
+    currentOffset = null;
+    scrubOffsetEl.textContent = "Manual";
+    scrubClockEl.textContent  = "";
+    timeMode.textContent = "Manual";
   });
 
   document.querySelectorAll(".segmented button").forEach((button) => {
@@ -171,43 +172,51 @@ function populateTypeOptions() {
     .join("");
 }
 
-function populateTimeWheel() {
-  timeWheel.innerHTML = timeOffsets
-    .map((minutes) => {
-      const label = minutes === 0 ? "Ahora" : offsetLabel(minutes);
-      return `<button class="time-tick" data-offset="${minutes}" type="button">
-        <span>${label}</span>
-        <small>${wheelClockLabel(minutes)}</small>
-      </button>`;
-    })
-    .join("");
+function wireDragScrub() {
+  const PIXELS_PER_STEP = 12; // px of drag per 5-minute step
+  let startY = null;
+  let startOffset = 0;
+
+  timeScrubber.addEventListener("pointerdown", (e) => {
+    startY = e.clientY;
+    startOffset = currentOffset;
+    timeScrubber.setPointerCapture(e.pointerId);
+    timeScrubber.classList.add("dragging");
+    e.preventDefault();
+  });
+
+  timeScrubber.addEventListener("pointermove", (e) => {
+    if (startY === null) return;
+    const deltaY = startY - e.clientY; // positive = dragged up = go back in time
+    const steps = Math.round(deltaY / PIXELS_PER_STEP);
+    const raw = startOffset - steps * 5;
+    applyOffset(Math.max(-1440, Math.min(0, raw)));
+  });
+
+  const endDrag = () => {
+    startY = null;
+    timeScrubber.classList.remove("dragging");
+  };
+  timeScrubber.addEventListener("pointerup", endDrag);
+  timeScrubber.addEventListener("pointercancel", endDrag);
+
+  timeScrubber.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp")   { applyOffset(Math.max(-1440, currentOffset - 5)); e.preventDefault(); }
+    if (e.key === "ArrowDown") { applyOffset(Math.min(0,     currentOffset + 5)); e.preventDefault(); }
+    if (e.key === "Home")      { applyOffset(0); e.preventDefault(); }
+  });
 }
 
-function wireTimeWheel() {
-  window.addEventListener("resize", () => {
-    syncWheelPadding();
-    centerWheelTick(timeWheel.querySelector(".time-tick.active"));
-  });
-
-  timeWheel.addEventListener(
-    "scroll",
-    () => {
-      if (isSyncingWheel) return;
-      if (wheelScrollFrame) cancelAnimationFrame(wheelScrollFrame);
-      wheelScrollFrame = requestAnimationFrame(() => {
-        const tick = nearestWheelTick();
-        if (!tick) return;
-        selectWheelOffset(Number(tick.dataset.offset), tick, false);
-      });
-    },
-    { passive: true },
-  );
-
-  timeWheel.addEventListener("click", (event) => {
-    const tick = event.target.closest(".time-tick");
-    if (!tick) return;
-    selectWheelOffset(Number(tick.dataset.offset), tick, true);
-  });
+function applyOffset(minutes) {
+  currentOffset = Math.round(minutes / 5) * 5; // snap to 5-min grid
+  useCurrentTime = currentOffset === 0;
+  const date = new Date();
+  date.setMinutes(date.getMinutes() + currentOffset);
+  updateTimeInput(date);
+  const label = currentOffset === 0 ? "Ahora" : offsetLabel(currentOffset);
+  scrubOffsetEl.textContent = label;
+  scrubClockEl.textContent  = currentOffset === 0 ? "" : formatTime(date);
+  timeMode.textContent = label;
 }
 
 function renderEvents() {
@@ -593,56 +602,7 @@ function renderTypeFilters() {
 }
 
 function setNowMode() {
-  useCurrentTime = true;
-  updateTimeInput(new Date());
-  const tick = timeWheel.querySelector('[data-offset="0"]');
-  syncWheelPadding();
-  markTimeMode("Ahora", 0);
-  centerWheelTick(tick);
-}
-
-function markTimeMode(text, activeOffset = null) {
-  timeWheel.querySelectorAll(".time-tick").forEach((button) => {
-    button.classList.toggle("active", Number(button.dataset.offset) === activeOffset);
-  });
-  timeMode.textContent = text;
-}
-
-function selectWheelOffset(minutes, tick, shouldCenter) {
-  useCurrentTime = minutes === 0;
-  const date = new Date();
-  date.setMinutes(date.getMinutes() + minutes);
-  updateTimeInput(date);
-  markTimeMode(minutes === 0 ? "Ahora" : offsetLabel(minutes), minutes);
-  if (shouldCenter) centerWheelTick(tick);
-}
-
-function centerWheelTick(tick) {
-  if (!tick) return;
-  syncWheelPadding();
-  isSyncingWheel = true;
-  const top = tick.offsetTop - (timeWheel.clientHeight - tick.offsetHeight) / 2;
-  timeWheel.scrollTo({ top });
-  window.setTimeout(() => {
-    isSyncingWheel = false;
-  }, 120);
-}
-
-function syncWheelPadding() {
-  const inset = Math.max(46, Math.floor(timeWheel.clientHeight / 2 - 19));
-  timeWheel.style.setProperty("--wheel-inset", `${inset}px`);
-}
-
-function nearestWheelTick() {
-  const ticks = [...timeWheel.querySelectorAll(".time-tick")];
-  const wheelBounds = timeWheel.getBoundingClientRect();
-  const center = wheelBounds.top + wheelBounds.height / 2;
-  return ticks.reduce((nearest, tick) => {
-    const bounds = tick.getBoundingClientRect();
-    const distance = Math.abs(bounds.top + bounds.height / 2 - center);
-    if (!nearest || distance < nearest.distance) return { tick, distance };
-    return nearest;
-  }, null)?.tick;
+  applyOffset(0);
 }
 
 function offsetLabel(minutes) {
@@ -653,12 +613,6 @@ function offsetLabel(minutes) {
     return rest ? `−${hours}h ${rest}m` : `−${hours}h`;
   }
   return `−${absolute}m`;
-}
-
-function wheelClockLabel(minutes) {
-  const date = new Date();
-  date.setMinutes(date.getMinutes() + minutes);
-  return formatTime(date);
 }
 
 function currentSelectedDate() {

@@ -167,13 +167,10 @@ h2 {
   grid-template-rows: minmax(0, 1fr) auto auto;
   align-content: stretch;
   gap: 7px;
-  overflow-y: auto;
   padding: 8px;
   background: var(--panel-alt);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
 }
 
 .strip-mode {
@@ -184,48 +181,55 @@ h2 {
   text-align: center;
 }
 
-.time-wheel {
+.time-scrubber {
   min-height: 0;
-  display: grid;
-  align-content: start;
-  gap: 5px;
-  overflow-y: auto;
-  padding: var(--wheel-inset, 54px) 0;
-  scroll-snap-type: y mandatory;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-  mask-image: linear-gradient(to bottom, transparent, black 14%, black 86%, transparent);
-}
-
-.time-tick {
-  min-height: 42px;
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 6px;
+  cursor: ns-resize;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  color: var(--ink);
+  border-radius: var(--radius);
   background: #fff;
-  scroll-snap-align: center;
+  transition: background var(--t), border-color var(--t);
 }
-.time-tick span {
-  font-size: 0.86rem;
-  font-weight: 820;
+.time-scrubber:hover {
+  border-color: var(--blue);
+  background: #fafbff;
 }
-.time-tick small {
+.time-scrubber:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.time-scrubber.dragging {
+  background: var(--blue-soft);
+  border-color: var(--blue);
+}
+.scrub-arrow {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.65rem;
+  opacity: 0.45;
+  line-height: 1;
+}
+.scrub-offset {
+  font-size: 1.25rem;
+  font-weight: 820;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.time-scrubber.dragging .scrub-offset {
+  color: var(--blue);
+}
+.scrub-clock {
+  color: var(--muted);
+  font-size: 0.78rem;
   font-weight: 720;
 }
-.time-tick.active {
-  color: #fff;
-  background: var(--blue);
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(49, 95, 159, 0.12);
-}
-.time-tick.active small { color: rgba(255,255,255,0.78); }
 
 .chip,
 .segmented button,
@@ -873,14 +877,6 @@ textarea { resize: vertical; }
     opacity: 0;
     cursor: pointer;
   }
-  .time-tick {
-    min-height: 36px;
-    grid-template-columns: 1fr;
-    gap: 0;
-    padding: 0 7px;
-  }
-  .time-tick span { font-size: 0.78rem; }
-  .time-tick small { font-size: 0.66rem; }
   .event-grid { grid-template-columns: 1fr; grid-auto-rows: minmax(0, 1fr); gap: 7px; }
   .event-card { padding: 6px 7px; gap: 6px; }
   .event-icon {
